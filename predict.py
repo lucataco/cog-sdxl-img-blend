@@ -30,22 +30,44 @@ SCHEDULERS = {
     "PNDM": PNDMScheduler,
 }
 
-MODEL_NAME="stabilityai/stable-diffusion-xl-base-1.0"
 MODEL_CACHE="model-cache"
-SDXL_URL = "https://weights.replicate.delivery/default/sdxl/sdxl-vae-upcast-fix.tar"
+os.environ['HUGGINGFACE_HUB_CACHE'] = MODEL_CACHE
+
+MODELS = [
+    {
+      'name': 'diffusion-pipeline',
+      'dest': 'model-cache/diffusion-pipeline',
+      'src': "https://weights.replicate.delivery/default/sdxl/sdxl-vae-upcast-fix.tar",
+    },
+    {
+      'name': 'blip-large',
+      'dest': 'model-cache/models--Salesforce--blip-image-captioning-large',
+      'src': 'https://weights.replicate.delivery/default/clip-vit-bigg-14-laion2b-39b-b160k/salesforce-blip-image-captioning-large.tar'
+    },
+    {
+      'name': 'ViT-bigG-14/laion2b_s39b_b160k',
+      'dest': 'model-cache/models--laion--CLIP-ViT-bigG-14-laion2B-39B-b160k',
+      'src': "https://weights.replicate.delivery/default/clip-vit-bigg-14-laion2b-39b-b160k/laion-clip-vit-bigg-14-laion2b-39b-b160k.tar"
+    }
+]
+
 
 
 class Predictor(BasePredictor):
     def setup(self) -> None:
         """Load the model into memory to make running multiple predictions efficient"""
-        WeightsDownloader.download_if_not_exists(SDXL_URL, MODEL_CACHE)
+        for model in MODELS:
+            WeightsDownloader.download_if_not_exists(model.get('src'), model.get('dest'))
         pipe = DiffusionPipeline.from_pretrained(
-            MODEL_CACHE,
+            'model-cache/diffusion-pipeline',
             torch_dtype=torch.float16,
             use_safetensors=True,
             variant="fp16",
+            local_files_only=True
         )
-        self.ci = Interrogator(Config(clip_model_name="ViT-bigG-14/laion2b_s39b_b160k"))
+
+        self.ci = Interrogator(Config(clip_model_name="ViT-bigG-14/laion2b_s39b_b160k", clip_model_path=MODEL_CACHE, download_cache=False))
+
         self.compel = Compel(
             tokenizer=[pipe.tokenizer, pipe.tokenizer_2] ,
             text_encoder=[pipe.text_encoder, pipe.text_encoder_2],
