@@ -32,6 +32,7 @@ SCHEDULERS = {
 
 MODEL_CACHE="model-cache"
 os.environ['HUGGINGFACE_HUB_CACHE'] = MODEL_CACHE
+os.environ['HF_HUB_OFFLINE'] = 1
 
 MODELS = [
     {
